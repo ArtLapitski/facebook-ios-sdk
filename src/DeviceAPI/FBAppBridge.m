@@ -590,12 +590,14 @@ forFailedAppCall:(FBAppCall *)appCall
         return;
     }
 
+#if TARGET_OS_IPHONE
     for (NSString *pasteboardName in pasteboardNames) {
         UIPasteboard *board = [UIPasteboard pasteboardWithName:pasteboardName create:NO];
         if (board) {
             [UIPasteboard removePasteboardWithName:board.name];
         }
     }
+#endif
 
     [dictionary removeObjectForKey:appCallID];
 

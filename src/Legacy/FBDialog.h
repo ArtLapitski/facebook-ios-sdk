@@ -15,7 +15,13 @@
  */
 
 #import <Foundation/Foundation.h>
+#if TARGET_OS_IPHONE
 #import <UIKit/UIKit.h>
+#elif TARGET_OS_MAC
+#import <AppKit/AppKit.h>
+#import <WebKit/WebKit.h>
+#endif
+#import "FBTypeDefs.h"
 
 @protocol FBDialogDelegate;
 @class FBFrictionlessRequestSettings;
@@ -26,21 +32,31 @@
  * Facebook dialog interface for start the facebook webView UIServer Dialog.
  */
 
+#if TARGET_OS_IPHONE
 @interface FBDialog : UIView <UIWebViewDelegate> {
+#elif TARGET_OS_MAC
+@interface FBDialog : NSView <WebResourceLoadDelegate, WebFrameLoadDelegate> {
+#endif
     id<FBDialogDelegate> _delegate;
     NSMutableDictionary *_params;
     NSString *_serverURL;
     NSURL *_loadingURL;
-    UIWebView *_webView;
-    UIActivityIndicatorView *_spinner;
-    UIButton *_closeButton;
+    FBWebView *_webView;
+#if TARGET_OS_IPHONE
+    UIActivityIndicatorView* _spinner;
+    UIButton* _closeButton;
     UIInterfaceOrientation _orientation;
+#elif TARGET_OS_MAC
+    NSProgressIndicator* _spinner;
+    NSButton* _closeButton;
+    NSWindow* _sheet;
+#endif
     BOOL _showingKeyboard;
     BOOL _isViewInvisible;
     FBFrictionlessRequestSettings *_frictionlessSettings;
 
     // Ensures that UI elements behind the dialog are disabled.
-    UIView *_modalBackgroundView;
+    FBView *_modalBackgroundView;
 }
 
 /**
@@ -114,6 +130,13 @@
  * Implementations must call dismissWithSuccess:YES at some point to hide the dialog.
  */
 - (void)dialogDidCancel:(NSURL *)url;
+    
+#if TARGET_OS_IPHONE
+- (void)webView:(FBWebView *)webView didFailLoadWithError:(NSError *)error;
+#elif TARGET_OS_MAC
+- (void)webView:(WebView *)webView resource:(id)identifier didFailLoadingWithError:(NSError *)error fromDataSource:(WebDataSource *)dataSource;
+#endif
+    
 @end
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

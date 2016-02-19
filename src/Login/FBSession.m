@@ -50,7 +50,11 @@
 
 static NSString *const FBAuthURLScheme = @"fbauth";
 static NSString *const FBAuthURLPath = @"authorize";
+#if TARGET_OS_IPHONE
 static NSString *const FBRedirectURL = @"fbconnect://success";
+#elif TARGET_OS_MAC
+static NSString *const FBRedirectURL = @"https://www.facebook.com/connect/login_success.html";
+#endif
 static NSString *const FBLoginDialogMethod = @"oauth";
 static NSString *const FBLoginUXClientID = @"client_id";
 static NSString *const FBLoginUXRedirectURI = @"redirect_uri";
@@ -1081,7 +1085,9 @@ static FBSession *g_activeSession = nil;
     }
 
     // To avoid surprises, delete any cookies we currently have.
-    [FBUtility deleteFacebookCookies];
+    if (!isReauthorize) {
+        [FBUtility deleteFacebookCookies];
+    }
 
     BOOL didRequestAuthorize = NO;
     NSString *authMethod = nil;

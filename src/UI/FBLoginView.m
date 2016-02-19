@@ -19,7 +19,9 @@
 #import "FBAppEvents+Internal.h"
 #import "FBError.h"
 #import "FBGraphUser.h"
+#if TARGET_OS_IPHONE
 #import "FBLoginTooltipView.h"
+#endif
 #import "FBLoginViewButtonPNG.h"
 #import "FBLoginViewButtonPressedPNG.h"
 #import "FBProfilePictureView.h"
@@ -45,7 +47,7 @@ static CGSize g_buttonSize;
 @interface FBLoginView () <UIActionSheetDelegate>
 
 @property (retain, nonatomic) UILabel *label;
-@property (retain, nonatomic) UIButton *button;
+@property (retain, nonatomic) NSUIButton *button;
 @property (retain, nonatomic) FBSession *session;
 @property (retain, nonatomic) FBRequestConnection *requestConnection;
 @property (retain, nonatomic) id<FBGraphUser> user;
@@ -107,6 +109,7 @@ static CGSize g_buttonSize;
     return self;
 }
 
+#if TARGET_OS_IPHONE
 - (instancetype)initWithCoder:(NSCoder *)aDecoder {
     self = [super initWithCoder:aDecoder];
     if (self) {
@@ -114,6 +117,7 @@ static CGSize g_buttonSize;
     }
     return self;
 }
+#endif
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -225,7 +229,7 @@ static CGSize g_buttonSize;
                                                object:nil];
 
     // setup button
-    self.button = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.button = [NSUIButton buttonWithType:UIButtonTypeCustom];
     [self.button addTarget:self
                     action:@selector(buttonPressed:)
           forControlEvents:UIControlEventTouchUpInside];
@@ -254,7 +258,7 @@ static CGSize g_buttonSize;
     // add a label that will appear over the button
     self.label = [[[FBShadowLabel alloc] init] autorelease];
     self.label.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-#ifdef __IPHONE_6_0
+#if TARGET_OS_IPHONE && defined(__IPHONE_6_0)
     self.label.textAlignment = NSTextAlignmentCenter;
 #else
     self.label.textAlignment = UITextAlignmentCenter;
@@ -333,12 +337,14 @@ static CGSize g_buttonSize;
     if (self.session.isOpen || self.tooltipBehavior == FBLoginViewTooltipBehaviorDisable){
         return;
     } else {
+#if TARGET_OS_IPHONE
         FBLoginTooltipView *tooltipView = [[[FBLoginTooltipView alloc] init] autorelease];
         tooltipView.colorStyle = self.tooltipColorStyle;
         if (self.tooltipBehavior == FBLoginViewTooltipBehaviorForceDisplay) {
             tooltipView.forceDisplay = YES;
         }
         [tooltipView presentFromView:self];
+#endif
     }
 }
 

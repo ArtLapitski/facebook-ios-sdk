@@ -27,7 +27,12 @@
 #import "FBDynamicFrameworkLoader.h"
 #import "FBSettings+Internal.h"
 
+#if TARGET_OS_IPHONE
 #import <AdSupport/AdSupport.h>
+#elif TARGET_OS_MAC
+#import <AppKit/AppKit.h>
+#import <IOKit/IOKitLib.h>
+#endif
 #include <mach-o/dyld.h>
 #include <sys/time.h>
 
@@ -367,11 +372,15 @@ NSString *const FBPersistedAnonymousIDKey   = @"anon_id";
 }
 
 + (NSString *)attributionID {
+#if TARGET_OS_IPHONE
     return [[UIPasteboard pasteboardWithName:@"fb_app_attribution" create:NO] string];
+#else
+    return nil;
+#endif
 }
 
 + (NSString *)advertiserID {
-    
+#if TARGET_OS_IPHONE
     NSString *result = nil;
     
     Class ASIdentifierManagerClass = fbdfl_ASIdentifierManagerClass();
@@ -381,6 +390,23 @@ NSString *const FBPersistedAnonymousIDKey   = @"anon_id";
     }
     
     return result;
+#elif TARGET_OS_MAC
+    static dispatch_once_t onceToken;
+    static NSString *systemUIID = nil;
+    
+    dispatch_once(&onceToken, ^{
+        io_service_t platformExpert = IOServiceGetMatchingService(kIOMasterPortDefault,IOServiceMatching("IOPlatformExpertDevice"));
+        if (platformExpert) {
+            CFTypeRef serialNumberAsCFString = IORegistryEntryCreateCFProperty(platformExpert,CFSTR(kIOPlatformUUIDKey),kCFAllocatorDefault, 0);
+            IOObjectRelease(platformExpert);
+            if (serialNumberAsCFString) {
+                systemUIID = (__bridge NSString *)(serialNumberAsCFString);
+            }
+        }
+    });
+    
+    return systemUIID;
+#endif
 }
 
 + (NSString *)anonymousID {
@@ -438,8 +464,9 @@ NSString *const FBPersistedAnonymousIDKey   = @"anon_id";
     
     static dispatch_once_t fetchAdvertisingTrackingStatusOnce;
     static FBAdvertisingTrackingStatus status;
-    
+  
     dispatch_once(&fetchAdvertisingTrackingStatusOnce, ^{
+#if TARGET_OS_IPHONE
         status = AdvertisingTrackingUnspecified;
         Class ASIdentifierManagerClass = fbdfl_ASIdentifierManagerClass();
         if ([ASIdentifierManagerClass class]) {
@@ -448,7 +475,11 @@ NSString *const FBPersistedAnonymousIDKey   = @"anon_id";
                 status = [manager isAdvertisingTrackingEnabled] ? AdvertisingTrackingAllowed : AdvertisingTrackingDisallowed;
             }
         }
+#else
+        status = AdvertisingTrackingAllowed;
+#endif
     });
+
 
     return status;
 }
@@ -473,7 +504,7 @@ NSString *const FBPersistedAnonymousIDKey   = @"anon_id";
     }
 
     [parameters setObject:[self anonymousID] forKey:@"anon_id"];
-    
+
     FBAdvertisingTrackingStatus advertisingTrackingStatus = [self advertisingTrackingStatus];
     if (advertisingTrackingStatus != AdvertisingTrackingUnspecified) {
         BOOL allowed = (advertisingTrackingStatus == AdvertisingTrackingAllowed);
@@ -742,10 +773,24 @@ NSString *const FBPersistedAnonymousIDKey   = @"anon_id";
     static dispatch_once_t onceToken;
     static BOOL supportsRetina;
 
+#if TARGET_OS_IPHONE
     dispatch_once(&onceToken, ^{
         supportsRetina = ([[UIScreen mainScreen] respondsToSelector:@selector(displayLinkWithTarget:selector:)] &&
                           ([UIScreen mainScreen].scale == 2.0));
     });
+#elif TARGET_OS_MAC
+    dispatch_once(&onceToken, ^{
+        CGFloat displayScale = 1.0;
+        if ([[NSScreen mainScreen] respondsToSelector:@selector(backingScaleFactor)]) {
+            for (NSScreen *screen in [NSScreen screens]) {
+                float s = [screen backingScaleFactor];
+                if ( s > displayScale)
+                    displayScale = s;
+            }
+        }
+        supportsRetina = displayScale == 2.0;
+    });
+#endif
     return supportsRetina;
 }
 

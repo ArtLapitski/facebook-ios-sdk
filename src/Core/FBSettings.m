@@ -19,7 +19,9 @@
 #import <UIKit/UIKit.h>
 
 #import "FBAppEvents+Internal.h"
+#if TARGET_OS_IPHONE
 #import "FBBoltsMeasurementEventListener.h"
+#endif
 #import "FBError.h"
 #import "FBInternalSettings.h"
 #import "FBLogger.h"
@@ -96,7 +98,9 @@ static BOOL g_enableLegacyGraphAPI = NO;
     static dispatch_once_t sdkConfigDone = 0;
     dispatch_once(&sdkConfigDone, ^{
         // Register Listener for Bolts measurement events
+#if TARGET_OS_IPHONE
         [FBBoltsMeasurementEventListener defaultListener];
+#endif
 
         // Set App Event SourceApplication when launch. But this is not going to update the value if app has already launched.
         [FBAppEvents setSourceApplication:launchData[UIApplicationLaunchOptionsSourceApplicationKey]

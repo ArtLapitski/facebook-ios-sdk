@@ -25,7 +25,16 @@
                          length:(NSUInteger)length
                           scale:(CGFloat)scale {
     NSData *data = [NSData dataWithBytesNoCopy:(void *)bytes length:length freeWhenDone:NO];
+#if TARGET_OS_IPHONE
     UIImage *image = [UIImage imageWithData:data scale:scale];
+#elif TARGET_OS_MAC
+    CFDataRef imgData = (__bridge CFDataRef)(data);
+    CGDataProviderRef imgDataProvider = CGDataProviderCreateWithCFData(imgData);
+    CFRelease(imgData);
+    CGImageRef cgImage = CGImageCreateWithPNGDataProvider(imgDataProvider, NULL, true, kCGRenderingIntentDefault);
+    CGDataProviderRelease(imgDataProvider);
+    UIImage *image = [UIImage imageWithCGImage:cgImage scale:scale orientation:UIImageOrientationUp];
+#endif
     return image;
 }
 

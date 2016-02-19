@@ -100,6 +100,8 @@ return NO; \
         }
         return NO;
     }
+    
+#if TARGET_OS_IPHONE
     SLComposeViewController *composeViewController = [self composeViewControllerWithSession:session
                                                                                     handler:handler];
     if (!composeViewController) {
@@ -143,6 +145,9 @@ return NO; \
     [viewController presentViewController:composeViewController animated:YES completion:nil];
 
     return YES;
+#endif
+    
+    return NO;
 }
 
 + (BOOL)canPresentOSIntegratedShareDialog
@@ -156,18 +161,26 @@ return NO; \
     }
 
     // Is the Facebook account available
+#if TARGET_OS_IPHONE
     NSString *facebookServiceType = fbdfl_SLServiceTypeFacebook();
     if (![composeViewControllerClass isAvailableForServiceType:facebookServiceType]) {
         return NO;
     }
 
     return YES;
+#endif
+    
+    return NO;
 }
 
 + (BOOL)canPresentOSIntegratedShareDialogWithSession:(FBSession *)session
 {
+#if TARGET_OS_IPHONE
     return (([FBSettings restrictedTreatment] == FBRestrictedTreatmentNO) &&
             ([self composeViewControllerWithSession:session handler:nil] != nil));
+#else
+    return NO;
+#endif
 }
 
 // A helper method to wrap common logic for any FBAppCalls. If `FBSettings restrictedTreatment` is
@@ -624,6 +637,7 @@ return NO; \
     return [call autorelease];
 }
 
+#if TARGET_OS_IPHONE
 + (SLComposeViewController *)composeViewControllerWithSession:(FBSession *)session
                                                       handler:(FBOSIntegratedShareDialogHandler)handler {
     if (![self canPresentOSIntegratedShareDialog]) {
@@ -641,6 +655,7 @@ return NO; \
     }
     return composeViewController;
 }
+#endif
 
 + (NSError *)createError:(NSString *)reason session:(FBSession *)session {
     NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];

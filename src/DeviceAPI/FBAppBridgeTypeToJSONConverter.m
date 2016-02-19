@@ -54,7 +54,9 @@ static const struct {
     .png = @"png",
 };
 
+#if TARGET_OS_IPHONE
 static NSString *const FBAppBridgeTypeIdentifier = @"com.facebook.Facebook.FBAppBridgeType";
+#endif
 
 @implementation FBAppBridgeTypeToJSONConverter
 
@@ -160,11 +162,13 @@ static NSString *const FBAppBridgeTypeIdentifier = @"com.facebook.Facebook.FBApp
     if (hasBase64) {
         appBridgeType = FBDecodeBase64(jsonReadyValue);
     } else if (hasPasteboard) {
+#if TARGET_OS_IPHONE
         UIPasteboard *board = [UIPasteboard pasteboardWithName:jsonReadyValue create:NO];
         if (board) {
             appBridgeType = [board valueForPasteboardType:FBAppBridgeTypeIdentifier];
             [UIPasteboard removePasteboardWithName:board.name];
         }
+#endif
     }
 
     if (appBridgeType && [dictionary[FBAppBridgeTypesMetadata.tag] isEqualToString:FBAppBridgeTypesTags.png]) {

@@ -599,6 +599,7 @@ static NSMutableArray *g_pendingFBAppCalls = nil;
         FBAppCall *containerDelegate = [[[FBAppCall alloc] initWithID:nil enforceScheme:NO appID:nil urlSchemeSuffix:nil] autorelease];
         container.delegate = containerDelegate;
         [g_pendingFBAppCalls addObject:containerDelegate];
+#if TARGET_OS_IPHONE
         if (parent.transitionCoordinator != nil) {
             // Wait until the transition is finished before presenting SafariVC to avoid a blank screen.
             [parent.transitionCoordinator animateAlongsideTransition:NULL completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
@@ -608,11 +609,14 @@ static NSMutableArray *g_pendingFBAppCalls = nil;
                 [parent presentViewController:container animated:YES completion:NULL];
             }];
         } else {
+#endif
             g_safariViewController = [[SFSafariViewControllerClass alloc] initWithURL:url];
             [g_safariViewController performSelector:@selector(setDelegate:) withObject:self];
             [container displayChildController:g_safariViewController];
             [parent presentViewController:container animated:YES completion:nil];
+#if TARGET_OS_IPHONE
         }
+#endif
         return YES;
     } else {
         return [FBAppCall openURL:url];

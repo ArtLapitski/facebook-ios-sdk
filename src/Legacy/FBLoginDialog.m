@@ -48,47 +48,68 @@
  * Override FBDialog : to call when the webView Dialog did succeed
  */
 - (void)dialogDidSucceed:(NSURL *)url {
-    NSString *q = [url absoluteString];
-    NSString *token = [self getStringFromUrl:q needle:@"access_token="];
-    NSString *expTime = [self getStringFromUrl:q needle:@"expires_in="];
-    NSDate *expirationDate =nil;
+    // retain self for the life of this method, in case we are released by a client
+    id me = [self retain];
+    
+    @try {
+        NSString *q = [url absoluteString];
+        NSString *token = [self getStringFromUrl:q needle:@"access_token="];
+        NSString *expTime = [self getStringFromUrl:q needle:@"expires_in="];
+        NSDate *expirationDate =nil;
 
-    if (expTime != nil) {
-        int expVal = [expTime intValue];
-        if (expVal == 0) {
-            expirationDate = [NSDate distantFuture];
+        if (expTime != nil) {
+            int expVal = [expTime intValue];
+            if (expVal == 0) {
+                expirationDate = [NSDate distantFuture];
+            } else {
+                expirationDate = [NSDate dateWithTimeIntervalSinceNow:expVal];
+            }
+        }
+
+        if ((token == (NSString *) [NSNull null]) || (token.length == 0)) {
+            [self dialogDidCancel:url];
+            [self dismissWithSuccess:NO animated:YES];
         } else {
-            expirationDate = [NSDate dateWithTimeIntervalSinceNow:expVal];
+            NSDictionary *params = [FBUtility queryParamsDictionaryFromFBURL:url];
+            if ([_loginDelegate respondsToSelector:@selector(fbDialogLogin:expirationDate:params:)]) {
+                [_loginDelegate fbDialogLogin:token expirationDate:expirationDate params:params];
+            }
+            [self dismissWithSuccess:YES animated:YES];
         }
+    } @finally {
+        [me release];
     }
-
-    if ((token == (NSString *) [NSNull null]) || (token.length == 0)) {
-        [self dialogDidCancel:url];
-        [self dismissWithSuccess:NO animated:YES];
-    } else {
-        NSDictionary *params = [FBUtility queryParamsDictionaryFromFBURL:url];
-        if ([_loginDelegate respondsToSelector:@selector(fbDialogLogin:expirationDate:params:)]) {
-            [_loginDelegate fbDialogLogin:token expirationDate:expirationDate params:params];
-        }
-        [self dismissWithSuccess:YES animated:YES];
-    }
-
 }
 
 /**
  * Override FBDialog : to call with the login dialog get canceled
  */
 - (void)dialogDidCancel:(NSURL *)url {
-    [self dismissWithSuccess:NO animated:YES];
-    if ([_loginDelegate respondsToSelector:@selector(fbDialogNotLogin:)]) {
-        [_loginDelegate fbDialogNotLogin:YES];
+    // retain self for the life of this method, in case we are released by a client
+    id me = [self retain];
+    
+    @try {
+        [self dismissWithSuccess:NO animated:YES];
+        if ([_loginDelegate respondsToSelector:@selector(fbDialogNotLogin:)]) {
+            [_loginDelegate fbDialogNotLogin:YES];
+        }
+    } @finally {
+        [me release];
     }
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
+#if TARGET_OS_IPHONE
+- (void)webView:(FBWebView *)webView didFailLoadWithError:(NSError *)error {
+#elif TARGET_OS_MAC
+- (void)webView:(WebView *)webView resource:(id)identifier didFailLoadingWithError:(NSError *)error fromDataSource:(WebDataSource *)dataSource {
+#endif
     if (!(([error.domain isEqualToString:NSURLErrorDomain] && error.code == NSURLErrorCancelled) ||
           ([error.domain isEqualToString:@"WebKitErrorDomain"] && error.code == 102))) {
+#if TARGET_OS_IPHONE
         [super webView:webView didFailLoadWithError:error];
+#elif TARGET_OS_MAC
+        [super webView:webView resource:identifier didFailLoadingWithError:error fromDataSource:dataSource];
+#endif
         if ([_loginDelegate respondsToSelector:@selector(fbDialogNotLogin:)]) {
             [_loginDelegate fbDialogNotLogin:NO];
         }

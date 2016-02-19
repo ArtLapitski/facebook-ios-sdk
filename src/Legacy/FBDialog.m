@@ -23,19 +23,40 @@
 #import "FBUtility.h"
 #import "Facebook.h"
 
+#if TARGET_OS_IPHONE
+int const FBFlexibleWidth = UIViewAutoresizingFlexibleWidth;
+int const FBFlexibleHeight = UIViewAutoresizingFlexibleHeight;
+int const FBFlexibleMargins = UIViewAutoresizingFlexibleTopMargin
+                            | UIViewAutoresizingFlexibleBottomMargin
+                            | UIViewAutoresizingFlexibleLeftMargin
+                            | UIViewAutoresizingFlexibleRightMargin;
+#elif TARGET_OS_MAC
+int const FBFlexibleWidth = NSViewWidthSizable;
+int const FBFlexibleHeight = NSViewHeightSizable;
+int const FBFlexibleMargins = NSViewMinXMargin | NSViewMaxXMargin | NSViewMinYMargin | NSViewMaxYMargin;
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // global
 
 static CGFloat kBorderGray[4] = {0.3, 0.3, 0.3, 0.8};
 static CGFloat kBorderBlack[4] = {0.3, 0.3, 0.3, 1};
-
+#if TARGET_OS_IPHONE
 static CGFloat kTransitionDuration = 0.3;
-
+#endif
 static CGFloat kPadding = 0;
 static CGFloat kBorderWidth = 10;
+static CGFloat kButtonPadding = 2;
+static CGFloat kButtonWidth = 29;
+static CGFloat kButtonHeight = 29;
+#if TARGET_OS_MAC
+static CGFloat kDialogWidth = 720;
+static CGFloat kDialogHeight = 540;
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if TARGET_OS_IPHONE
 static BOOL FBIsDeviceIPad() {
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 30200
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
@@ -44,6 +65,7 @@ static BOOL FBIsDeviceIPad() {
 #endif
     return NO;
 }
+#endif
 
 // This function determines if we want to use the legacy view layout in effect for iPhone OS 2.0
 // through iOS 7, where we, the developer, have to worry about device orientation when working with
@@ -53,10 +75,12 @@ static BOOL FBIsDeviceIPad() {
 // code. Otherwise if the application was linked with UIKit on iOS 8 or later and the application
 // is running on iOS 8 or later, UIKit handles all the rotation complexity and the origin is always
 // in the top-left and no rotation transform is necessary.
+#if TARGET_OS_IPHONE
 static BOOL FBUseLegacyLayout(void) {
     return (![FBUtility isUIKitLinkedOnOrAfter:FBIOSVersion_8_0] ||
             ![FBUtility isRunningOnOrAfter:FBIOSVersion_8_0]);
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -93,7 +117,11 @@ static BOOL FBUseLegacyLayout(void) {
 }
 
 - (void)drawRect:(CGRect)rect fill:(const CGFloat *)fillColors radius:(CGFloat)radius {
+#if TARGET_OS_IPHONE
     CGContextRef context = UIGraphicsGetCurrentContext();
+#elif TARGET_OS_MAC
+    CGContextRef context = [[NSGraphicsContext currentContext] graphicsPort];
+#endif
     CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
 
     if (fillColors) {
@@ -112,7 +140,11 @@ static BOOL FBUseLegacyLayout(void) {
 }
 
 - (void)strokeLines:(CGRect)rect stroke:(const CGFloat *)strokeColor {
+#if TARGET_OS_IPHONE
     CGContextRef context = UIGraphicsGetCurrentContext();
+#elif TARGET_OS_MAC
+    CGContextRef context = [[NSGraphicsContext currentContext] graphicsPort];
+#endif
     CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
 
     CGContextSaveGState(context);
@@ -146,6 +178,7 @@ static BOOL FBUseLegacyLayout(void) {
     CGColorSpaceRelease(space);
 }
 
+#if TARGET_OS_IPHONE
 - (BOOL)shouldRotateToOrientation:(UIInterfaceOrientation)orientation {
     if (orientation == _orientation) {
         return NO;
@@ -231,6 +264,7 @@ static BOOL FBUseLegacyLayout(void) {
     self.transform = [self transformForOrientation];
     [UIView commitAnimations];
 }
+#endif
 
 - (NSURL *)generateURL:(NSString *)baseURL params:(NSDictionary *)params {
     if (params) {
@@ -257,6 +291,7 @@ static BOOL FBUseLegacyLayout(void) {
 }
 
 - (void)addObservers {
+#if TARGET_OS_IPHONE
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(deviceOrientationDidChange:)
                                                  name:@"UIDeviceOrientationDidChangeNotification" object:nil];
@@ -264,20 +299,38 @@ static BOOL FBUseLegacyLayout(void) {
                                              selector:@selector(keyboardWillShow:) name:@"UIKeyboardWillShowNotification" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(keyboardWillHide:) name:@"UIKeyboardWillHideNotification" object:nil];
+#endif
 }
 
 - (void)removeObservers {
+#if TARGET_OS_IPHONE
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:@"UIDeviceOrientationDidChangeNotification" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:@"UIKeyboardWillShowNotification" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:@"UIKeyboardWillHideNotification" object:nil];
+#endif
 }
 
 - (void)postDismissCleanup {
     [self removeObservers];
+#if TARGET_OS_IPHONE
     [self removeFromSuperview];
+#elif TARGET_OS_MAC
+    _webView.resourceLoadDelegate = nil;
+    _webView.frameLoadDelegate = nil;
+    [_closeButton setTarget:nil];
+    [_closeButton setAction:nil];
+    
+    [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                             selector:@selector(webView:willPerformClientRedirectToURL:delay:fireDate:forFrame:)
+                                               object:nil];
+    
+    [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                             selector:@selector(webView:didReceiveServerRedirectForProvisionalLoadForFrame:)
+                                               object:nil];
+#endif
     [_modalBackgroundView removeFromSuperview];
 
     // this method call could cause a self-cleanup, and needs to really happen "last"
@@ -294,6 +347,7 @@ static BOOL FBUseLegacyLayout(void) {
     [_loadingURL release];
     _loadingURL = nil;
 
+#if TARGET_OS_IPHONE
     if (animated && _everShown) {
         [UIView beginAnimations:nil context:nil];
         [UIView setAnimationDuration:kTransitionDuration];
@@ -304,6 +358,10 @@ static BOOL FBUseLegacyLayout(void) {
     } else {
         [self postDismissCleanup];
     }
+#elif TARGET_OS_MAC
+    [self postDismissCleanup];
+    [NSApp endSheet:_sheet];
+#endif
 }
 
 - (void)cancel {
@@ -349,19 +407,31 @@ static BOOL FBUseLegacyLayout(void) {
         _loadingURL = nil;
         _showingKeyboard = NO;
         _everShown = NO;
+#if TARGET_OS_MAC
+        self.wantsLayer = YES;
+        self.layer = [self makeBackingLayer];
+        [self.layer setDelegate:self];
+#endif
 
+#if TARGET_OS_IPHONE
         self.backgroundColor = [UIColor clearColor];
-        self.autoresizesSubviews = YES;
-        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         self.contentMode = UIViewContentModeRedraw;
+#endif
+        self.autoresizesSubviews = YES;
+        self.autoresizingMask = FBFlexibleWidth | FBFlexibleHeight;
 
-        _webView = [[UIWebView alloc] initWithFrame:CGRectMake(kPadding, kPadding, 480, 480)];
+        _webView = [[FBWebView alloc] initWithFrame:CGRectMake(kBorderWidth, kBorderWidth, 640, 480)];
+#if TARGET_OS_IPHONE
         _webView.delegate = self;
-        _webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+#elif TARGET_OS_MAC
+        _webView.resourceLoadDelegate = self;
+        _webView.frameLoadDelegate = self;
+#endif
+        _webView.autoresizingMask = FBFlexibleWidth | FBFlexibleHeight;
         [self addSubview:_webView];
 
+#if TARGET_OS_IPHONE
         UIImage *closeImage = [FBDialogClosePNG image];
-
         UIColor *color = [UIColor colorWithRed:167.0/255 green:184.0/255 blue:216.0/255 alpha:1];
         _closeButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
         [_closeButton setImage:closeImage forState:UIControlStateNormal];
@@ -380,7 +450,6 @@ static BOOL FBUseLegacyLayout(void) {
         _closeButton.showsTouchWhenHighlighted = YES;
         _closeButton.autoresizingMask = UIViewAutoresizingFlexibleRightMargin
         | UIViewAutoresizingFlexibleBottomMargin;
-        [self addSubview:_closeButton];
 
         _spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:
                     UIActivityIndicatorViewStyleWhiteLarge];
@@ -389,18 +458,43 @@ static BOOL FBUseLegacyLayout(void) {
         } else {
             [_spinner setActivityIndicatorViewStyle:UIActivityIndicatorViewStyleGray];
         }
-        _spinner.autoresizingMask =
-        UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin
-        | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
+#elif TARGET_OS_MAC
+        NSData* imageData = UIImagePNGRepresentation([FBDialogClosePNG image]);
+        NSImage* closeImage = [[[NSImage alloc] initWithData:imageData] autorelease];
+        _closeButton = [[[NSButton alloc] init] retain];
+        [_closeButton setImage:closeImage];
+        [_closeButton setImagePosition:NSImageOnly];
+        [[_closeButton cell] setImageScaling:NSImageScaleProportionallyDown];
+        [_closeButton setBordered:NO];
+        
+        [_closeButton setTarget:self];
+        [_closeButton setAction:@selector(cancel)];
+        [_closeButton setFont:[NSFont boldSystemFontOfSize:12]];
+        [_closeButton setWantsLayer:YES];
+        [_closeButton setAutoresizingMask:NSViewMaxXMargin | NSViewMinYMargin];
+        
+        _spinner = [[NSProgressIndicator alloc] init];
+        [_spinner setStyle:NSProgressIndicatorSpinningStyle];
+#endif
+        [_spinner setAutoresizingMask:FBFlexibleMargins];
+        [self addSubview:_closeButton];
         [self addSubview:_spinner];
+#if TARGET_OS_IPHONE
         _modalBackgroundView = [[UIView alloc] init];
+#endif
     }
     return self;
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+#if TARGET_OS_IPHONE
     _webView.delegate = nil;
+#elif TARGET_OS_MAC
+    _webView.resourceLoadDelegate = nil;
+    _webView.frameLoadDelegate = nil;
+    [_sheet release];
+#endif
     [_webView release];
     [_params release];
     [_serverURL release];
@@ -417,7 +511,7 @@ static BOOL FBUseLegacyLayout(void) {
 
 - (void)drawRect:(CGRect)rect {
     [self drawRect:rect fill:kBorderGray radius:0];
-
+    
     CGRect webRect = CGRectMake(
                                 ceil(rect.origin.x + kBorderWidth), ceil(rect.origin.y + kBorderWidth)+1,
                                 rect.size.width - kBorderWidth * 2, _webView.frame.size.height+1);
@@ -425,8 +519,17 @@ static BOOL FBUseLegacyLayout(void) {
     [self strokeLines:webRect stroke:kBorderBlack];
 }
 
+#if TARGET_OS_MAC
+- (void)didEndSheet:(NSWindow *)sheet returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo {
+    [[sheet sheetParent] setDelegate:nil];
+    [sheet orderOut:self];
+}
+#endif
+
 // Display the dialog's WebView with a slick pop-up animation
 - (void)showWebView {
+    
+#if TARGET_OS_IPHONE
     UIWindow *window = [UIApplication sharedApplication].keyWindow;
     if (window.windowLevel != UIWindowLevelNormal) {
         for(window in [UIApplication sharedApplication].windows) {
@@ -445,52 +548,83 @@ static BOOL FBUseLegacyLayout(void) {
     [UIView setAnimationDidStopSelector:@selector(bounce1AnimationStopped)];
     self.transform = CGAffineTransformScale([self transformForOrientation], 1.1, 1.1);
     [UIView commitAnimations];
+#endif
 
     _everShown = YES;
     [self dialogWillAppear];
     [self addObservers];
+#if TARGET_OS_MAC
+    _sheet = [[NSWindow alloc] init];
+    [_sheet setFrame:CGRectMake(kPadding, kPadding, kDialogWidth, kDialogHeight) display:YES];
+    [_sheet setContentView:self];
+    [_sheet setBackgroundColor:[NSColor clearColor]];
+    FBWindow* window = [FBApplication sharedApplication].keyWindow;
+    if (!window) {
+        window = [[FBApplication sharedApplication].windows objectAtIndex:0];
+    }
+    
+    [NSApp beginSheet:_sheet modalForWindow:window modalDelegate:self didEndSelector:@selector(didEndSheet:returnCode:contextInfo:) contextInfo:nil];
+#endif
 }
 
 // Show a spinner during the loading time for the dialog. This is designed to show
 // on top of the webview but before the contents have loaded.
 - (void)showSpinner {
     [_spinner sizeToFit];
+#if TARGET_OS_IPHONE
     [_spinner startAnimating];
     _spinner.center = _webView.center;
+#elif TARGET_OS_MAC
+    [_spinner startAnimation:self];
+    NSRect spinnerFrame = [_spinner frame];
+    NSRect selfBounds = [self bounds];
+    NSPoint spinnerOrigin = NSMakePoint(ceil((NSWidth(selfBounds) - NSWidth(spinnerFrame)) / 2.0),
+                                        ceil((NSHeight(selfBounds) - NSHeight(spinnerFrame)) / 2.0));
+    [_spinner setFrameOrigin:spinnerOrigin];
+#endif
 }
 
 - (void)hideSpinner {
+#if TARGET_OS_IPHONE
     [_spinner stopAnimating];
+#elif TARGET_OS_MAC
+    [_spinner stopAnimation:self];
+#endif
     _spinner.hidden = YES;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // UIWebViewDelegate
 
+- (BOOL)checkURL:(NSURL*)url {
+    if ([[url.resourceSpecifier substringToIndex:8] isEqualToString:@"//cancel"]) {
+        NSString *errorCode = [self getStringFromUrl:[url absoluteString] needle:@"error_code="];
+        NSString *errorStr = [self getStringFromUrl:[url absoluteString] needle:@"error_msg="];
+        if (errorCode) {
+            NSDictionary *errorData = [NSDictionary dictionaryWithObject:errorStr forKey:@"error_msg"];
+            NSError *error = [NSError errorWithDomain:@"facebookErrDomain"
+                                                 code:[errorCode intValue]
+                                             userInfo:errorData];
+            [self dismissWithError:error animated:YES];
+        } else {
+            [self dialogDidCancel:url];
+        }
+    } else {
+        if (_frictionlessSettings.enabled) {
+            [self dialogSuccessHandleFrictionlessResponses:url];
+        }
+        [self dialogDidSucceed:url];
+    }
+    return NO;
+}
+
+#if TARGET_OS_IPHONE
 - (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request
  navigationType:(UIWebViewNavigationType)navigationType {
     NSURL *url = request.URL;
 
     if ([url.scheme isEqualToString:@"fbconnect"]) {
-        if ([[url.resourceSpecifier substringToIndex:8] isEqualToString:@"//cancel"]) {
-            NSString *errorCode = [self getStringFromUrl:[url absoluteString] needle:@"error_code="];
-            NSString *errorStr = [self getStringFromUrl:[url absoluteString] needle:@"error_msg="];
-            if (errorCode) {
-                NSDictionary *errorData = [NSDictionary dictionaryWithObject:errorStr forKey:@"error_msg"];
-                NSError *error = [NSError errorWithDomain:@"facebookErrDomain"
-                                                     code:[errorCode intValue]
-                                                 userInfo:errorData];
-                [self dismissWithError:error animated:YES];
-            } else {
-                [self dialogDidCancel:url];
-            }
-        } else {
-            if (_frictionlessSettings.enabled) {
-                [self dialogSuccessHandleFrictionlessResponses:url];
-            }
-            [self dialogDidSucceed:url];
-        }
-        return NO;
+        return [self checkURL:url];
     } else if ([_loadingURL isEqual:url]) {
         return YES;
     } else if (navigationType == UIWebViewNavigationTypeLinkClicked) {
@@ -505,8 +639,43 @@ static BOOL FBUseLegacyLayout(void) {
         return YES;
     }
 }
+#elif TARGET_OS_MAC
+- (void)processRedirect:(WebView *)sender to:(NSURL*)url {
+    BOOL proceed = YES;
+    
+    if ([url.relativeString hasPrefix:@"https://www.facebook.com/connect/login_success.html"]
+        || [url.scheme isEqualToString:@"fbconnect"]) {
+        proceed = [self checkURL:url];
+    } else if ([_loadingURL isEqual:url]) {
+        proceed = YES;
+    } else if ([_delegate respondsToSelector:@selector(dialog:shouldOpenURLInExternalBrowser:)]) {
+        if (![_delegate dialog:self shouldOpenURLInExternalBrowser:url]) {
+            proceed = NO;
+            [FBAppCall openURL:url];
+        }
+    }
+    
+    if(!proceed) {
+        [sender stopLoading:sender];
+    }
+}
+    
+-(void)webView:(WebView *)sender willPerformClientRedirectToURL:(NSURL *)url delay:(NSTimeInterval)seconds fireDate:(NSDate *)date forFrame:(WebFrame *)frame {
+    [self processRedirect:sender to:url];
+}
 
-- (void)webViewDidFinishLoad:(UIWebView *)webView {
+- (void)webView:(FBWebView *)webView didReceiveServerRedirectForProvisionalLoadForFrame:(WebFrame *)frame {
+    NSURL *url = [[[frame provisionalDataSource] request] URL];
+    
+    [self processRedirect:webView to:url];
+}
+#endif
+
+#if TARGET_OS_IPHONE
+- (void)webViewDidFinishLoad:(FBWebView *)webView {
+#elif TARGET_OS_MAC
+- (void)webView:(FBWebView *)webView resource:(id)identifier didFinishLoadingFromDataSource:(WebDataSource *)dataSource {
+#endif
     if (_isViewInvisible) {
         // if our cache asks us to hide the view, then we do, but
         // in case of a stale cache, we will display the view in a moment
@@ -516,10 +685,16 @@ static BOOL FBUseLegacyLayout(void) {
     } else {
         [self hideSpinner];
     }
+#if TARGET_OS_IPHONE
     [self updateWebOrientation];
+#endif
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
+#if TARGET_OS_IPHONE
+- (void)webView:(FBWebView *)webView didFailLoadWithError:(NSError *)error {
+#elif TARGET_OS_MAC
+- (void)webView:(WebView *)webView resource:(id)identifier didFailLoadingWithError:(NSError *)error fromDataSource:(WebDataSource *)dataSource {
+#endif
     // 102 == WebKitErrorFrameLoadInterruptedByPolicyChange
     // NSURLErrorCancelled == "Operation could not be completed", note NSURLErrorCancelled occurs when
     // the user clicks away before the page has completely loaded, if we find cases where we want this
@@ -531,6 +706,7 @@ static BOOL FBUseLegacyLayout(void) {
     }
 }
 
+#if TARGET_OS_IPHONE
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // UIDeviceOrientationDidChangeNotification
 
@@ -581,6 +757,7 @@ static BOOL FBUseLegacyLayout(void) {
                                      kPadding + kBorderWidth);
     }
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // public
@@ -630,12 +807,15 @@ static BOOL FBUseLegacyLayout(void) {
 }
 
 - (void)loadURL:(NSString *)url get:(NSDictionary *)getParams {
-
     [_loadingURL release];
     _loadingURL = [[self generateURL:url params:getParams] retain];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:_loadingURL];
 
+#if TARGET_OS_IPHONE
     [_webView loadRequest:request];
+#elif TARGET_OS_MAC
+    [[_webView mainFrame] loadRequest:request];
+#endif
 }
 
 - (void)show {
@@ -649,27 +829,33 @@ static BOOL FBUseLegacyLayout(void) {
         return;
     }
     [self load];
+#if TARGET_OS_IPHONE
     [self sizeToFitOrientation:NO];
-
-    CGFloat innerWidth = self.frame.size.width - (kBorderWidth+1)*2;
-    [_closeButton sizeToFit];
-
-    _closeButton.frame = CGRectMake(
-                                    2,
-                                    2,
-                                    29,
-                                    29);
-
-    _webView.frame = CGRectMake(
-                                kBorderWidth+1,
-                                kBorderWidth+1,
-                                innerWidth,
-                                self.frame.size.height - (1 + kBorderWidth * 2));
-
+#endif
     if (!_isViewInvisible) {
         [self showSpinner];
         [self showWebView];
     }
+
+    CGFloat innerWidth = NSWidth([self frame]) - (kBorderWidth + 1) * 2;
+    CGFloat innerHeight = NSHeight([self frame]) - (kBorderWidth + 1) * 2;
+    [_closeButton sizeToFit];
+
+#if TARGET_OS_IPHONE
+    _closeButton.frame = CGRectMake(kButtonPadding, kButtonPadding,
+                                    kButtonWidth, kButtonHeight);
+    
+#elif TARGET_OS_MAC
+    [_closeButton setFrameSize:NSMakeSize(kButtonWidth, kButtonHeight)];
+    [_closeButton setFrameOrigin:NSMakePoint(kButtonPadding,
+                                             NSHeight([self frame]) - kButtonHeight - kButtonPadding)];
+#endif
+
+    _webView.frame = CGRectMake(
+                                kBorderWidth + 1,
+                                kBorderWidth + 1,
+                                innerWidth,
+                                innerHeight);
 }
 
 - (void)dismissWithSuccess:(BOOL)success animated:(BOOL)animated {

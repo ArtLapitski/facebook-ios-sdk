@@ -31,7 +31,7 @@ static const CGFloat subtitleHeight = subtitleFontHeight * 1.25;
 
 @property (nonatomic, retain) UIImageView *pictureView;\
 @property (nonatomic, retain) UILabel *titleSuffixLabel;
-@property (nonatomic, retain) UIActivityIndicatorView *activityIndicator;
+@property (nonatomic, retain) NSUIActivityIndicatorView *activityIndicator;
 
 - (void)updateFonts;
 
@@ -127,7 +127,7 @@ static const CGFloat subtitleHeight = subtitleFontHeight * 1.25;
 - (void)startAnimatingActivityIndicator {
     CGRect cellBounds = self.bounds;
     if (!self.activityIndicator) {
-        UIActivityIndicatorView *activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+        NSUIActivityIndicatorView *activityIndicator = [[NSUIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
         activityIndicator.hidesWhenStopped = YES;
         activityIndicator.autoresizingMask =
         (UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);

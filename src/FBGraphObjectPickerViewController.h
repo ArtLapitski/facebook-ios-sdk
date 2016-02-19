@@ -43,7 +43,7 @@
  @abstract
  Returns an outlet for the spinner used in the view controller.
  */
-@property (nonatomic, retain) IBOutlet UIActivityIndicatorView *spinner;
+@property (nonatomic, retain) IBOutlet NSUIActivityIndicatorView *spinner;
 
 /*!
  @abstract

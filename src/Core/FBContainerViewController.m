@@ -30,9 +30,12 @@
   [self addChildViewController:childController];
   UIView *view = self.view;
   UIView *childView = childController.view;
+#if TARGET_OS_IPHONE
   childView.translatesAutoresizingMaskIntoConstraints = NO;
+#endif
   childView.frame = view.bounds;
   [view addSubview:childView];
+#if TARGET_OS_IPHONE
   [view addConstraints:
     @[
       [NSLayoutConstraint constraintWithItem:childView
@@ -67,6 +70,7 @@
                                   multiplier:1.0
                                     constant:0.0],
     ]];
+#endif
 
   [childController didMoveToParentViewController:self];
 }

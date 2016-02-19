@@ -1,5 +1,11 @@
-Facebook SDK for iOS
-====================
+Facebook SDK for OS X
+=====================
+This is an OS X port of the original Facebook SDK for iOS.
+
+FBDialog adaptation for OS X is based on CodeNoEvil sources.
+https://github.com/CodeNoEvil/facebook-ios-sdk/
+
+=====================
 
 This open-source library allows you to integrate Facebook into your iOS app.
 
