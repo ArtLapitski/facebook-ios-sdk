@@ -47,7 +47,7 @@ static CGSize g_buttonSize;
 @interface FBLoginView () <UIActionSheetDelegate>
 
 @property (retain, nonatomic) UILabel *label;
-@property (retain, nonatomic) NSUIButton *button;
+@property (retain, nonatomic) UIButton *button;
 @property (retain, nonatomic) FBSession *session;
 @property (retain, nonatomic) FBRequestConnection *requestConnection;
 @property (retain, nonatomic) id<FBGraphUser> user;
@@ -229,7 +229,7 @@ static CGSize g_buttonSize;
                                                object:nil];
 
     // setup button
-    self.button = [NSUIButton buttonWithType:UIButtonTypeCustom];
+    self.button = [UIButton buttonWithType:UIButtonTypeCustom];
     [self.button addTarget:self
                     action:@selector(buttonPressed:)
           forControlEvents:UIControlEventTouchUpInside];
