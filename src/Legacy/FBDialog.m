@@ -521,7 +521,6 @@ static BOOL FBUseLegacyLayout(void) {
 
 #if TARGET_OS_MAC
 - (void)didEndSheet:(NSWindow *)sheet returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo {
-    [[sheet sheetParent] setDelegate:nil];
     [sheet orderOut:self];
 }
 #endif
